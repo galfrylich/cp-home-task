@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: service-2
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: service-2
+  template:
+    metadata:
+      labels:
+        app: service-2
+    spec:
+      containers:
+        - name: service-2
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: AWS_REGION
+              value: {{ .Values.env.AWS_REGION | quote }}
+            - name: SQS_QUEUE_URL
+              value: {{ .Values.env.SQS_QUEUE_URL | quote }}
+            - name: S3_BUCKET
+              value: {{ .Values.env.S3_BUCKET | quote }}
+            - name: POLL_INTERVAL
+              value: {{ .Values.env.POLL_INTERVAL | quote }}
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: aws-creds
+                  key: AWS_ACCESS_KEY_ID
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: aws-creds
+                  key: AWS_SECRET_ACCESS_KEY     

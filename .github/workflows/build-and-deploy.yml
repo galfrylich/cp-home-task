@@ -1,0 +1,79 @@
+name: build-and-deploy
+
+on:
+  push:
+    branches: [ "main" ]
+
+env:
+  AWS_REGION: ca-central-1
+  EKS_CLUSTER: dev-eks
+  NAMESPACE: email-services
+  REGISTRY: docker.io
+  SERVICE_1_IMAGE: galfrylich/service-1-api
+  SERVICE_2_IMAGE: galfrylich/service-2-worker
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1️⃣ Checkout
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 2️⃣ Generate ONE tag for everything
+      - name: Generate image tag
+        id: tag
+        run: |
+          TAG=$(git rev-parse --short HEAD)
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      # 3️⃣ Login to Docker Hub
+      - name: Docker login
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # 4️⃣ Build & push service-1
+      - name: Build & push service-1
+        run: |
+          docker build -t $SERVICE_1_IMAGE:${{ steps.tag.outputs.tag }} service-1
+          docker push $SERVICE_1_IMAGE:${{ steps.tag.outputs.tag }}
+
+      # 5️⃣ Build & push service-2
+      - name: Build & push service-2
+        run: |
+          docker build -t $SERVICE_2_IMAGE:${{ steps.tag.outputs.tag }} service-2
+          docker push $SERVICE_2_IMAGE:${{ steps.tag.outputs.tag }}
+
+      # 6️⃣ Configure AWS
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # 7️⃣ Configure kubeconfig
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig \
+            --name $EKS_CLUSTER \
+            --region $AWS_REGION
+
+      # 8️⃣ Deploy service-1 with Helm
+      - name: Deploy service-1
+        run: |
+          helm upgrade --install service-1 helm/service-1 \
+            -n $NAMESPACE \
+            --set image.repository=$SERVICE_1_IMAGE \
+            --set image.tag=${{ steps.tag.outputs.tag }}
+
+      # 9️⃣ Deploy service-2 with Helm
+      - name: Deploy service-2
+        run: |
+          helm upgrade --install service-2 helm/service-2 \
+            -n $NAMESPACE \
+            --set image.repository=$SERVICE_2_IMAGE \
+            --set image.tag=${{ steps.tag.outputs.tag }}
