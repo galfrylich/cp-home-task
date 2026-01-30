@@ -66,7 +66,7 @@ jobs:
       # 8️⃣ Deploy service-1 with Helm
       - name: Deploy service-1
         run: |
-          helm upgrade --install service-1 helm/service-1 \
+          helm upgrade --install service-1 service-1-chart \
             -n $NAMESPACE \
             --set image.repository=$SERVICE_1_IMAGE \
             --set image.tag=${{ steps.tag.outputs.tag }}
@@ -74,7 +74,7 @@ jobs:
       # 9️⃣ Deploy service-2 with Helm
       - name: Deploy service-2
         run: |
-          helm upgrade --install service-2 helm/service-2 \
+          helm upgrade --install service-2 service-2-chart \
             -n $NAMESPACE \
             --set image.repository=$SERVICE_2_IMAGE \
             --set image.tag=${{ steps.tag.outputs.tag }}
