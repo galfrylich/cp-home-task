@@ -78,3 +78,66 @@ jobs:
             -n $NAMESPACE \
             --set image.repository=$SERVICE_2_IMAGE \
             --set image.tag=${{ steps.tag.outputs.tag }}
+
+      - name: ALB smoke test (health + send)
+        shell: bash
+        run: |
+            set -e
+
+            echo "🔎 Fetching ALB DNS..."
+            ALB_DNS=$(aws elbv2 describe-load-balancers \
+            --region $AWS_REGION \
+            --query "LoadBalancers[?contains(LoadBalancerName,'service-1')].DNSName | [0]" \
+            --output text)
+
+            if [ -z "$ALB_DNS" ] || [ "$ALB_DNS" = "None" ]; then
+            echo "❌ ALB DNS not found"
+            exit 1
+            fi
+
+            echo "✅ ALB DNS: $ALB_DNS"
+
+            echo "⏳ Waiting for targets to become healthy..."
+            for i in {1..10}; do
+            STATE=$(aws elbv2 describe-target-health \
+                --target-group-arn $(aws elbv2 describe-target-groups \
+                --region $AWS_REGION \
+                --query "TargetGroups[?contains(TargetGroupName,'service-1')].TargetGroupArn | [0]" \
+                --output text) \
+                --region $AWS_REGION \
+                --query "TargetHealthDescriptions[].TargetHealth.State" \
+                --output text | tr '\t' '\n' | sort -u)
+
+            echo "Target state(s): $STATE"
+
+            if echo "$STATE" | grep -q healthy; then
+                break
+            fi
+
+            sleep 15
+            done
+
+            if ! echo "$STATE" | grep -q healthy; then
+            echo "❌ Targets are not healthy"
+            exit 1
+            fi
+
+            echo "🩺 Health check..."
+            curl --fail --retry 5 --retry-delay 5 \
+            http://$ALB_DNS/health
+
+            echo "📨 Sending test payload..."
+            curl --fail --retry 5 --retry-delay 5 \
+            -X POST http://$ALB_DNS/send \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ci-test" \
+            -d '{
+                "data": {
+                "email_subject": "CI Smoke Test",
+                "email_sender": "github-actions",
+                "email_timestream": "1690000000",
+                "email_content": "hello from pipeline"
+                }
+            }'
+
+            echo "✅ ALB smoke test passed"
