@@ -130,7 +130,7 @@ jobs:
             curl --fail --retry 5 --retry-delay 5 \
             -X POST http://$ALB_DNS/send \
             -H "Content-Type: application/json" \
-            -H "Authorization: Bearer ci-test" \
+            -H "Authorization: Bearer 123456" \
             -d '{
                 "data": {
                 "email_subject": "CI Smoke Test",
