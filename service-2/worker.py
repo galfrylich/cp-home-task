@@ -5,12 +5,13 @@ import boto3
 from datetime import datetime
 
 AWS_REGION = os.getenv("AWS_REGION", "ca-central-1")
-SQS_QUEUE_URL = os.getenv("SQS_QUEUE_URL")
+SQS_QUEUE_NAME = os.getenv("SQS_QUEUE_NAME", "dev-email-queue")
 S3_BUCKET = os.getenv("S3_BUCKET")
 POLL_INTERVAL = int(os.getenv("POLL_INTERVAL", "10"))
 
 sqs = boto3.client("sqs", region_name=AWS_REGION)
 s3 = boto3.client("s3", region_name=AWS_REGION)
+QUEUE_URL = sqs.get_queue_url(QueueName=SQS_QUEUE_NAME)["QueueUrl"]
 
 
 def upload_to_s3(payload: dict):
@@ -33,7 +34,7 @@ def upload_to_s3(payload: dict):
 
 while True:
     response = sqs.receive_message(
-        QueueUrl=SQS_QUEUE_URL,
+        QueueUrl=QUEUE_URL,
         MaxNumberOfMessages=1,
         WaitTimeSeconds=10
     )
@@ -51,7 +52,7 @@ while True:
             upload_to_s3(body)
 
             sqs.delete_message(
-                QueueUrl=SQS_QUEUE_URL,
+                QueueUrl=QUEUE_URL,
                 ReceiptHandle=msg["ReceiptHandle"]
             )
 

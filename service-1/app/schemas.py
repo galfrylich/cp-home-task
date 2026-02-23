@@ -11,3 +11,4 @@ class EmailData(BaseModel):
 
 class RequestPayload(BaseModel):
     data: EmailData
+    token: str

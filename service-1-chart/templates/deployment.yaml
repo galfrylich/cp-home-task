@@ -21,8 +21,8 @@ spec:
           env:
             - name: AWS_REGION
               value: {{ .Values.env.AWS_REGION | quote }}
-            - name: SQS_QUEUE_URL
-              value: {{ .Values.env.SQS_QUEUE_URL | quote }}
+            - name: SQS_QUEUE_NAME
+              value: {{ .Values.env.SQS_QUEUE_NAME | quote }}
             - name: JWT_SSM_PARAM
               value: {{ .Values.env.JWT_SSM_PARAM | quote }}
             - name: AWS_ACCESS_KEY_ID

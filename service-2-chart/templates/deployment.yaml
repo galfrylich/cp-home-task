@@ -19,8 +19,8 @@ spec:
           env:
             - name: AWS_REGION
               value: {{ .Values.env.AWS_REGION | quote }}
-            - name: SQS_QUEUE_URL
-              value: {{ .Values.env.SQS_QUEUE_URL | quote }}
+            - name: SQS_QUEUE_NAME
+              value: {{ .Values.env.SQS_QUEUE_NAME | quote }}
             - name: S3_BUCKET
               value: {{ .Values.env.S3_BUCKET | quote }}
             - name: POLL_INTERVAL
